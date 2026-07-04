@@ -87,8 +87,8 @@ jobs:
           set -eu
           EXPECTED_REPO=$(node -p "const p=require('./packages/core/package.json'); const u=(typeof p.repository==='string'?p.repository:p.repository?.url)||''; const m=u.match(/github\\.com[/:]([^/]+\\/[^/.]+)(?:\\.git)?$/); m?.[1]||''")
           if [ -z "$EXPECTED_REPO" ]; then
-            echo "::warning::Unable to determine expected publishing repository from package metadata; continuing with publish."
-            echo "allowed=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::Skipping npm publish: unable to determine trusted repository from package metadata."
+            echo "allowed=false" >> "$GITHUB_OUTPUT"
           elif [ "$EXPECTED_REPO" != "${GITHUB_REPOSITORY}" ]; then
             echo "::notice::Skipping npm publish: workflow is running in ${GITHUB_REPOSITORY}, but @astryxdesign/* trusted publishing is configured for ${EXPECTED_REPO}. Publishing here would fail with npm E404/not-found-or-no-permission."
             echo "allowed=false" >> "$GITHUB_OUTPUT"
@@ -174,8 +174,8 @@ jobs:
           set -eu
           EXPECTED_REPO=$(node -p "const p=require('./packages/core/package.json'); const u=(typeof p.repository==='string'?p.repository:p.repository?.url)||''; const m=u.match(/github\\.com[/:]([^/]+\\/[^/.]+)(?:\\.git)?$/); m?.[1]||''")
           if [ -z "$EXPECTED_REPO" ]; then
-            echo "::warning::Unable to determine expected publishing repository from package metadata; continuing with canary publish."
-            echo "allowed=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::Skipping canary publish: unable to determine trusted repository from package metadata."
+            echo "allowed=false" >> "$GITHUB_OUTPUT"
           elif [ "$EXPECTED_REPO" != "${GITHUB_REPOSITORY}" ]; then
             echo "::notice::Skipping canary publish: workflow is running in ${GITHUB_REPOSITORY}, but @astryxdesign/* trusted publishing is configured for ${EXPECTED_REPO}. Publishing here would fail with npm E404/not-found-or-no-permission."
             echo "allowed=false" >> "$GITHUB_OUTPUT"
