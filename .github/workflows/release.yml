@@ -81,13 +81,31 @@ jobs:
           cache: 'pnpm'
           registry-url: 'https://registry.npmjs.org'
 
+      - name: Validate trusted publishing context
+        id: trusted-publishing-context
+        run: |
+          set -eu
+          EXPECTED_REPO=$(node -p "const p=require('./packages/core/package.json'); const u=(typeof p.repository==='string'?p.repository:p.repository?.url)||''; const m=u.match(/github\\.com[/:]([^/]+\\/[^/.]+)(?:\\.git)?$/); m?.[1]||''")
+          if [ -z "$EXPECTED_REPO" ]; then
+            echo "::warning::Skipping npm publish: unable to determine trusted repository from package metadata."
+            echo "allowed=false" >> "$GITHUB_OUTPUT"
+          elif [ "$EXPECTED_REPO" != "${GITHUB_REPOSITORY}" ]; then
+            echo "::notice::Skipping npm publish: workflow is running in ${GITHUB_REPOSITORY}, but @astryxdesign/* trusted publishing is configured for ${EXPECTED_REPO}. Publishing here would fail with npm E404/not-found-or-no-permission."
+            echo "allowed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "allowed=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Install dependencies
+        if: steps.trusted-publishing-context.outputs.allowed == 'true'
         run: pnpm install --frozen-lockfile
 
       - name: Build all packages
+        if: steps.trusted-publishing-context.outputs.allowed == 'true'
         run: pnpm build
 
       - name: Publish changed packages
+        if: steps.trusted-publishing-context.outputs.allowed == 'true'
         env:
           DRY_RUN: ${{ inputs.dry-run }}
         run: |
@@ -115,6 +133,10 @@ jobs:
             published=$((published + 1))
           done
           echo "Published $published package(s)."
+
+      - name: Publish skipped summary
+        if: steps.trusted-publishing-context.outputs.allowed != 'true'
+        run: echo "No packages were published from this repository context."
 
   # Canary publish — runs on every push to main. The @canary dist-tag always
   # points to the latest main commit:
@@ -146,13 +168,31 @@ jobs:
           cache: 'pnpm'
           registry-url: 'https://registry.npmjs.org'
 
+      - name: Validate trusted publishing context
+        id: trusted-publishing-context
+        run: |
+          set -eu
+          EXPECTED_REPO=$(node -p "const p=require('./packages/core/package.json'); const u=(typeof p.repository==='string'?p.repository:p.repository?.url)||''; const m=u.match(/github\\.com[/:]([^/]+\\/[^/.]+)(?:\\.git)?$/); m?.[1]||''")
+          if [ -z "$EXPECTED_REPO" ]; then
+            echo "::warning::Skipping canary publish: unable to determine trusted repository from package metadata."
+            echo "allowed=false" >> "$GITHUB_OUTPUT"
+          elif [ "$EXPECTED_REPO" != "${GITHUB_REPOSITORY}" ]; then
+            echo "::notice::Skipping canary publish: workflow is running in ${GITHUB_REPOSITORY}, but @astryxdesign/* trusted publishing is configured for ${EXPECTED_REPO}. Publishing here would fail with npm E404/not-found-or-no-permission."
+            echo "allowed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "allowed=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Install dependencies
+        if: steps.trusted-publishing-context.outputs.allowed == 'true'
         run: pnpm install --frozen-lockfile
 
       - name: Build all packages
+        if: steps.trusted-publishing-context.outputs.allowed == 'true'
         run: pnpm build
 
       - name: Publish canary versions
+        if: steps.trusted-publishing-context.outputs.allowed == 'true'
         # Pure OIDC trusted publishing — no NPM_TOKEN.
         run: |
           set -eu
@@ -214,3 +254,7 @@ jobs:
           fi
 
           echo "Canary published: npm install @astryxdesign/core@${CANARY_VERSION}"
+
+      - name: Canary publish skipped summary
+        if: steps.trusted-publishing-context.outputs.allowed != 'true'
+        run: echo "No canary packages were published from this repository context."
